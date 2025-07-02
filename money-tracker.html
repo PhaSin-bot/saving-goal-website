@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Money Tracker App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Quicksand', sans-serif;
+    }
+    body {
+      background: linear-gradient(to right, #fbc2eb, #a6c1ee);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      animation: fadeIn 1s ease-in-out;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: #333;
+    }
+    .section {
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    input, select {
+      padding: 0.5rem;
+      width: 100%;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+    }
+    button {
+      background: #6c5ce7;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #341f97;
+    }
+    .summary, .transactions {
+      background: #f1f2f6;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+    .transactions ul {
+      list-style: none;
+    }
+    .transactions li {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+    }
+    .income { color: green; }
+    .expense { color: red; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💸 Cute Money Tracker</h1>
+
+    <div class="section">
+      <label for="currency">Select Currency</label>
+      <select id="currency">
+        <option value="RM">RM</option>
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+      </select>
+
+      <label for="initialAmount">Initial Amount</label>
+      <input type="number" id="initialAmount" placeholder="Enter starting balance">
+    </div>
+
+    <div class="section">
+      <label for="type">Type</label>
+      <select id="type">
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+
+      <label for="amount">Amount</label>
+      <input type="number" id="amount" placeholder="Enter amount">
+
+      <label for="desc">Description</label>
+      <input type="text" id="desc" placeholder="Enter description">
+
+      <label for="category">Category</label>
+      <select id="category">
+        <option value="Salary">Salary</option>
+        <option value="Food">Food</option>
+        <option value="Transport">Transport</option>
+        <option value="Shopping">Shopping</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <label for="date">Date</label>
+      <input type="date" id="date">
+
+      <button onclick="addTransaction()">Add Transaction</button>
+    </div>
+
+    <div class="summary section">
+      <h3>Summary</h3>
+      <p>Total Balance: <span id="total">0</span></p>
+      <p>Total Income: <span id="income">0</span></p>
+      <p>Total Expenses: <span id="expense">0</span></p>
+    </div>
+
+    <div class="transactions section">
+      <h3>Transactions</h3>
+      <ul id="transList"></ul>
+    </div>
+
+    <div class="section">
+      <button onclick="downloadPDF()">Print PDF</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    let total = 0;
+    let currency = document.getElementById('currency').value;
+
+    document.getElementById('currency').addEventListener('change', function() {
+      currency = this.value;
+      updateSummary();
+      renderTransactions();
+    });
+
+    document.getElementById('initialAmount').addEventListener('input', function() {
+      total = parseFloat(this.value) || 0;
+      updateSummary();
+    });
+
+    function addTransaction() {
+      const type = document.getElementById('type').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const desc = document.getElementById('desc').value;
+      const date = document.getElementById('date').value;
+      const category = document.getElementById('category').value;
+
+      if (!amount || !desc || !date) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      const transaction = { type, amount, desc, date, category, currency };
+      transactions.push(transaction);
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+
+      if (type === 'income') total += amount;
+      else total -= amount;
+
+      updateSummary();
+      renderTransactions();
+    }
+
+    function updateSummary() {
+      const income = transactions.filter(t => t.type === 'income' && t.currency === currency).reduce((a, t) => a + t.amount, 0);
+      const expense = transactions.filter(t => t.type === 'expense' && t.currency === currency).reduce((a, t) => a + t.amount, 0);
+      const balance = income - expense + (parseFloat(document.getElementById('initialAmount').value) || 0);
+
+      document.getElementById('total').innerText = `${currency} ${balance.toFixed(2)}`;
+      document.getElementById('income').innerText = `${currency} ${income.toFixed(2)}`;
+      document.getElementById('expense').innerText = `${currency} ${expense.toFixed(2)}`;
+    }
+
+    function renderTransactions() {
+      const list = document.getElementById('transList');
+      list.innerHTML = '';
+      transactions.filter(t => t.currency === currency).forEach((t, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span>${t.date} - ${t.category}: ${t.desc}</span>
+          <span class="${t.type}">${currency} ${t.amount.toFixed(2)}</span>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.text("Money Tracker Summary", 20, 20);
+      doc.text("Currency: " + currency, 20, 30);
+      doc.text("Total: " + document.getElementById('total').innerText, 20, 40);
+      doc.text("Income: " + document.getElementById('income').innerText, 20, 50);
+      doc.text("Expense: " + document.getElementById('expense').innerText, 20, 60);
+
+      doc.text("Transactions:", 20, 80);
+      let offset = 90;
+      transactions.filter(t => t.currency === currency).forEach((t, i) => {
+        doc.text(`${t.date} - ${t.category}: ${t.desc} : ${currency} ${t.amount.toFixed(2)} (${t.type})`, 20, offset);
+        offset += 10;
+      });
+
+      doc.save("money_tracker.pdf");
+    }
+
+    function logout() {
+      alert("You have been logged out.");
+      location.reload();
+    }
+
+    renderTransactions();
+    updateSummary();
+  </script>
+</body>
+</html>
